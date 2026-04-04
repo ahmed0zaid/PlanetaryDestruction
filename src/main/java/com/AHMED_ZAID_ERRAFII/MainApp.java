@@ -1,14 +1,25 @@
 package com.AHMED_ZAID_ERRAFII;
 
 import javafx.application.Application;
+import javafx.geometry.Pos;
 import javafx.scene.*;
 import javafx.scene.image.Image;
 import javafx.scene.input.ScrollEvent;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.Sphere;
 import javafx.scene.transform.Rotate;
 import javafx.stage.Stage;
+import javafx.scene.Scene;
+import javafx.scene.control.Label;
+import javafx.scene.control.Button;
+import javafx.scene.layout.VBox;
+import javafx.scene.layout.StackPane;
+import javafx.geometry.Pos;
+import javafx.geometry.Insets;
+
 import java.util.Random;
 
 public class MainApp extends Application {
@@ -16,13 +27,14 @@ public class MainApp extends Application {
     private double lastMouseX, lastMouseY;
     private final Rotate rotateX = new Rotate(0, Rotate.X_AXIS);
     private final Rotate rotateY = new Rotate(0, Rotate.Y_AXIS);
-    private double cameraZ = -800;
+    private double cameraZ = -2000;
+    private long population = 8000000000L;
+    private String current_tool = "MISSILE";
 
     @Override
     public void start(Stage primaryStage) {
         Group root = new Group();
 
-        //pl
         Sphere planet = new Sphere(200);
         PhongMaterial planetMaterial = new PhongMaterial();
         planetMaterial.setDiffuseMap(new Image("https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg"));
@@ -38,18 +50,46 @@ public class MainApp extends Application {
         root.getChildren().add(light);
         root.getChildren().add(new AmbientLight(Color.rgb(30, 30, 30)));
 
-        Scene scene = new Scene(root, 1200, 800, true, SceneAntialiasing.BALANCED);
-        scene.setFill(Color.BLACK);
+        SubScene subScene = new SubScene(root, 1200, 800, true, SceneAntialiasing.BALANCED);
+        subScene.setFill(Color.BLACK);
 
         PerspectiveCamera camera = new PerspectiveCamera(true);
         camera.setNearClip(0.1);
         camera.setFarClip(10000.0);
         camera.setTranslateZ(cameraZ);
-        scene.setCamera(camera);
+        subScene.setCamera(camera);
+
+        Label poplabel2 = new Label("TOTAL POPULATION: 8000000000");
+        poplabel2.setTextFill(Color.GREEN);
+        poplabel2.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
+        Label poplabel = new Label("CURRENT POPULATION: " + population);
+        poplabel.setTextFill(Color.RED);
+        poplabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
+
+        Button resetButton = new Button("Reset Planet");
+        resetButton.setOnAction(e -> {
+            population = 8000000000L;
+            poplabel.setText("CURRENT POPULATION: " + population);
+        });
+
+
+        VBox ui = new VBox(10, poplabel2, poplabel);
+        ui.setPadding(new Insets(20));
+        ui.setAlignment(Pos.TOP_LEFT);
+        ui.setPickOnBounds(false);
+
+        VBox ui2 = new VBox(10, resetButton);
+        ui2.setPadding(new Insets(20));
+        ui2.setAlignment(Pos.BOTTOM_LEFT);
+        ui2.setPickOnBounds(false);
+
+        StackPane masterRoot = new StackPane(subScene, ui2, ui);
+
+        Scene scene = new Scene(masterRoot, 1200, 800);
 
         handleMouseEvents(scene, planet, camera);
 
-        primaryStage.setTitle("Planetary-Destruction GAME by AHMED-ZAID ERRAFII");
+        primaryStage.setTitle("Planetary-Destruction GAME - Final Layout");
         primaryStage.setScene(scene);
         primaryStage.show();
     }
@@ -95,8 +135,12 @@ public class MainApp extends Application {
         });
 
         scene.addEventHandler(ScrollEvent.SCROLL, e -> {
-            cameraZ += e.getDeltaY() * 2;
-            camera.setTranslateZ(cameraZ);
+            double delta = e.getDeltaY() * 2;
+            double newZ = cameraZ + delta;
+            if (newZ < -450 && newZ > -4000) {
+                cameraZ = newZ;
+                camera.setTranslateZ(cameraZ);
+            }
         });
     }
 
