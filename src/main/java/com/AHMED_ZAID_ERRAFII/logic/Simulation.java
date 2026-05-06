@@ -1,8 +1,10 @@
 package com.AHMED_ZAID_ERRAFII.logic;
 
 public class Simulation {
-    public long population = 8000000000L;
-    public void handleDamage() {
-        population = Math.max(0, population - 150000000L);
+    public long totalPopulation = 8000000000L;
+    public long currentPopulation = 8000000000L;
+
+    public void registerHit() {
+        currentPopulation = Math.max(0, currentPopulation - 125000000L);
     }
 }
