@@ -7,19 +7,24 @@ import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
 import javafx.geometry.Point3D;
-import javafx.geometry.Pos;
 import javafx.scene.*;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.transform.Rotate;
 import javafx.stage.Stage;
-
-import java.net.URL;
 import javafx.scene.media.AudioClip;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
+import java.net.URL;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.geometry.Pos;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.geometry.Insets;
 
 public class MainApp extends Application {
     private Simulation sim = new Simulation();
@@ -27,15 +32,25 @@ public class MainApp extends Application {
     private double lastX;
     private final double ZOOM_OUT_Z = -1200;
 
-    // Sound Effects
-    private AudioClip launchSound;
-    private AudioClip explosionSound;
-    private AudioClip polandSound;
-    private AudioClip moroccoSound;
+    private AudioClip launchSound, explosionSound, polandSound, moroccoSound;
     private MediaPlayer backgroundMusic;
 
     @Override
     public void start(Stage stage) {
+        Runnable startGameLogic = () -> {
+            initSounds(); // Initialize sounds
+            setupGameScene(stage); // Move your existing 3D/HUD setup into this method
+        };
+
+
+        // Show the Menu first
+        StartMenu menu = new StartMenu(stage, startGameLogic);
+        menu.show();
+
+    }
+
+    private void setupGameScene(Stage stage) {
+
         initSounds();
 
         PlanetModel planet = new PlanetModel(rotateY);
@@ -52,37 +67,72 @@ public class MainApp extends Application {
         camera.setTranslateZ(ZOOM_OUT_Z);
         sub3D.setCamera(camera);
 
+        // --- HUD ELEMENTS ---
+        ImageView logo = new ImageView(new Image(getClass().getResourceAsStream("logo.png")));
+        logo.setFitWidth(200);
+        logo.setPreserveRatio(true);
+
+// 2. Population Labels (Top-Left)
         Label totalPop = new Label("TOTAL POPULATION: " + sim.totalPopulation);
-        totalPop.setStyle("-fx-text-fill: green; -fx-font-size: 28px; -fx-font-weight: bold;");
-
+        totalPop.setStyle("-fx-text-fill: green; -fx-font-size: 30px; -fx-font-weight: bold;");
         Label currentPop = new Label("CURRENT POPULATION: " + sim.currentPopulation);
-        currentPop.setStyle("-fx-text-fill: red; -fx-font-size: 28px; -fx-font-weight: bold;");
+        currentPop.setStyle("-fx-text-fill: red; -fx-font-size: 30px; -fx-font-weight: bold;");
 
-        VBox hud = new VBox(5, totalPop, currentPop);
-        hud.setPadding(new Insets(20));
-        hud.setMouseTransparent(true);
+        VBox topLeftLabels = new VBox(5, totalPop, currentPop);
+        topLeftLabels.setPadding(new Insets(20));
+        topLeftLabels.setMouseTransparent(true);
+
+// 3. Clean Button (Bottom-Left)
+        Button cleanBtn = new Button("CLEAN EARTH");
+        cleanBtn.setStyle("-fx-font-size: 20px; -fx-base: #3a5a81; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20 10 20; -fx-border-color: black; -fx-border-width: 3px;");
+        cleanBtn.setOnAction(e -> {
+            planet.resetTexture();
+            sim.currentPopulation = sim.totalPopulation;
+            currentPop.setText("CURRENT POPULATION: " + sim.currentPopulation);
+        });
+
+// Wrap the button in a HBox or VBox to add padding at the bottom
+        VBox bottomLeftContainer = new VBox(cleanBtn);
+        bottomLeftContainer.setPadding(new Insets(20));
+        bottomLeftContainer.setPickOnBounds(false);
+        bottomLeftContainer.setAlignment(Pos.BOTTOM_LEFT);
+
+// 4. ORCHESTRATE LAYOUT IN STACKPANE
+        StackPane root = new StackPane();
+        root.getChildren().addAll(sub3D, topLeftLabels, logo, bottomLeftContainer);
+
+// Align the elements
+        StackPane.setAlignment(topLeftLabels, Pos.TOP_LEFT);
+        StackPane.setAlignment(logo, Pos.TOP_RIGHT);
+        StackPane.setAlignment(bottomLeftContainer, Pos.BOTTOM_LEFT);
+
+// Set logo padding
+        StackPane.setMargin(logo, new Insets(20));
+
+        stage.setScene(new Scene(root, 1200, 800));
 
         sub3D.setOnMouseClicked(e -> {
             var res = e.getPickResult();
             if (res.getIntersectedNode() == planet.getGlobe()) {
+                // 1. PLAY LAUNCH IMMEDIATELY
+                if (launchSound != null) launchSound.play();
+
                 Point3D worldHit = res.getIntersectedPoint();
                 Point2D uv = res.getIntersectedTexCoord();
 
-                // Play launch sound immediately
-                if (launchSound != null) launchSound.play();
-
                 WeaponSystem.fireMissile(worldHit, worldRoot, planet.group, ZOOM_OUT_Z, () -> {
+                    // 2. IMPACT LOGIC (AFTER 1 SECOND)
                     planet.applyTextureDamage(uv);
                     sim.registerHit();
                     currentPop.setText("CURRENT POPULATION: " + sim.currentPopulation);
 
-                    // Determine sound based on location
-                    String country = planet.getCountryAt(uv);
-                    switch (country) {
-                        case "POLAND" -> polandSound.play();
-                        case "MOROCCO" -> moroccoSound.play();
-                        default -> explosionSound.play();
-                    }
+                    // 3. ALWAYS PLAY EXPLOSION
+                    if (explosionSound != null) explosionSound.play();
+
+                    // 4. CHECK FOR SPECIAL SOUNDS (LAYERED)
+                    String country = planet.getCountryAt(uv).toUpperCase().trim();
+                    if (country.equals("POLAND") && polandSound != null) polandSound.play();
+                    if (country.equals("MOROCCO") && moroccoSound != null) moroccoSound.play();
                 });
             }
         });
@@ -93,28 +143,31 @@ public class MainApp extends Application {
             lastX = e.getSceneX();
         });
 
-        stage.setScene(new Scene(new StackPane(sub3D, hud), 1200, 800));
-        stage.setTitle("Planetary Destruction GAME - Final Layout");
+
+        stage.setTitle("Planetary Destruction GAME");
         stage.show();
     }
 
     private void initSounds() {
         try {
-            // Load sound effects
-            launchSound = new AudioClip(getClass().getResource("launch.wav").toExternalForm());
-            explosionSound = new AudioClip(getClass().getResource("explosion.wav").toExternalForm());
-            polandSound = new AudioClip(getClass().getResource("poland.wav").toExternalForm());
-            moroccoSound = new AudioClip(getClass().getResource("morocco.wav").toExternalForm());
+            launchSound = loadEffect("launch.wav");
+            explosionSound = loadEffect("explosion.wav");
+            polandSound = loadEffect("poland.wav");
+            moroccoSound = loadEffect("morocco.wav");
 
-            // Load background ambiance
-            Media media = new Media(getClass().getResource("space_ambiance.mp3").toExternalForm());
-            backgroundMusic = new MediaPlayer(media);
-            backgroundMusic.setCycleCount(MediaPlayer.INDEFINITE); // Loop
-            backgroundMusic.setVolume(0.4);
-            backgroundMusic.play();
-        } catch (Exception e) {
-            System.err.println("Audio files missing in resources: " + e.getMessage());
-        }
+            URL musicURL = getClass().getResource("/com/AHMED_ZAID_ERRAFII/space.wav");
+            if (musicURL != null) {
+                backgroundMusic = new MediaPlayer(new Media(musicURL.toExternalForm()));
+                backgroundMusic.setCycleCount(MediaPlayer.INDEFINITE);
+                backgroundMusic.setVolume(0.4);
+                backgroundMusic.play();
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    private AudioClip loadEffect(String name) {
+        URL url = getClass().getResource("/com/AHMED_ZAID_ERRAFII/" + name);
+        return (url == null) ? null : new AudioClip(url.toExternalForm());
     }
 
     public static void main(String[] args) { launch(args); }
