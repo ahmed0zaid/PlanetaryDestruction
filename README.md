@@ -17,26 +17,6 @@ The application renders a 3D Earth model inside a procedural starfield. Players 
 
 ---
 
-## Project Structure
-
-src/main/
-├── java/com/AHMED_ZAID_ERRAFII/
-│   ├── MainApp.java            # App entry point, 3D setup, HUD, click handlers
-│   ├── StartMenu.java          # Main menu, procedural star backdrop, UI layout
-│   ├── entities/
-│   │   ├── PlanetModel.java    # 3D Earth sphere, UV damage logic, hit detection
-│   │   └── WeaponSystem.java   # Missile mesh, trajectory math, smoke emitter
-│   └── logic/
-│       └── Simulation.java     # Population counters and hit processing
-└── resources/com/AHMED_ZAID_ERRAFII/
-├── detection_map.png       # Color-coded political map for hit checks
-├── logo.png                # Game logo
-├── uni_logo.png            # Politechnika Świętokrzyska logo
-└── *.wav                   # Sound effects and soundtrack
-
-
----
-
 ## Controls
 
 - **Left Mouse Click + Drag**: Rotate the Earth on its Y-axis.
